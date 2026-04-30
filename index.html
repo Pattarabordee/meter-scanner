@@ -2,105 +2,130 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-  <title>PEA No. Scanner</title>
+  <title>PEA No. Photo Crop OCR Scanner</title>
 
-  <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css"
+  >
+
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <style>
+    :root {
+      --bg: #111827;
+      --card: #1f2937;
+      --card-soft: #243244;
+      --text: #ffffff;
+      --muted: #d1d5db;
+      --muted-2: #9ca3af;
+      --border: #374151;
+
+      --green: #16a34a;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --gray: #4b5563;
+      --orange: #ea580c;
+
+      --radius-lg: 20px;
+      --radius-md: 13px;
+
+      --font-title: clamp(22px, 6vw, 32px);
+      --font-base: clamp(14px, 3.5vw, 16px);
+      --font-button: clamp(15px, 4vw, 18px);
+      --font-input: clamp(18px, 5vw, 22px);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      width: 100%;
+      min-height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #111827;
-      color: #ffffff;
+      min-height: 100dvh;
+      font-family: Arial, "Noto Sans Thai", sans-serif;
+      background:
+        radial-gradient(circle at top, #263145 0, #111827 55%, #030712 100%);
+      color: var(--text);
+      font-size: var(--font-base);
+    }
+
+    .page {
+      min-height: 100dvh;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding:
+        max(14px, env(safe-area-inset-top))
+        max(14px, env(safe-area-inset-right))
+        max(14px, env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
     }
 
     .container {
-      max-width: 560px;
+      width: min(100%, 640px);
       margin: 0 auto;
-      padding: 18px;
     }
 
     .card {
-      background: #1f2937;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-      margin-top: 18px;
+      width: 100%;
+      background: rgba(31, 41, 55, 0.98);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-lg);
+      padding: clamp(16px, 4vw, 24px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.35);
     }
 
     h1 {
-      font-size: 24px;
-      margin: 0 0 8px;
+      font-size: var(--font-title);
+      line-height: 1.15;
       text-align: center;
+      margin: 0 0 8px;
     }
 
     .subtitle {
       text-align: center;
-      color: #d1d5db;
-      font-size: 14px;
-      margin-bottom: 16px;
-      line-height: 1.5;
+      color: var(--muted);
+      font-size: clamp(13px, 3.4vw, 15px);
+      line-height: 1.55;
+      margin-bottom: 18px;
     }
 
     .section {
       margin-top: 16px;
       padding-top: 16px;
-      border-top: 1px solid #374151;
+      border-top: 1px solid var(--border);
     }
 
-    .video-box {
-      position: relative;
-      background: #000000;
-      border-radius: 16px;
-      padding: 10px;
-      overflow: hidden;
-    }
-
-    video {
-      width: 100%;
-      max-height: 420px;
-      border-radius: 12px;
-      background: #000000;
-    }
-
-    canvas {
+    .file-input {
       display: none;
     }
 
-    .scan-guide {
-      position: absolute;
-      left: 8%;
-      right: 8%;
-      top: 34%;
-      height: 150px;
-      border: 2px solid #22c55e;
-      border-radius: 12px;
-      pointer-events: none;
-      box-shadow: 0 0 0 999px rgba(0,0,0,0.18);
-    }
-
-    .status {
-      margin-top: 14px;
-      min-height: 24px;
-      text-align: center;
-      color: #e5e7eb;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    button {
+    button,
+    .file-button {
+      display: block;
       width: 100%;
+      min-height: 52px;
       margin-top: 12px;
-      padding: 14px;
+      padding: 14px 16px;
       border: none;
-      border-radius: 12px;
-      font-size: 17px;
-      font-weight: bold;
+      border-radius: var(--radius-md);
+      font-size: var(--font-button);
+      font-weight: 700;
       color: #ffffff;
+      text-align: center;
       cursor: pointer;
+      touch-action: manipulation;
     }
 
     button:disabled {
@@ -108,285 +133,380 @@
       cursor: not-allowed;
     }
 
-    .primary-btn {
-      background: #16a34a;
+    .primary {
+      background: var(--green);
     }
 
-    .secondary-btn {
-      background: #2563eb;
+    .secondary {
+      background: var(--blue);
     }
 
-    .danger-btn {
-      background: #dc2626;
+    .danger {
+      background: var(--red);
     }
 
-    .back-btn {
-      background: #4b5563;
+    .gray {
+      background: var(--gray);
+    }
+
+    .orange {
+      background: var(--orange);
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .button-grid button {
+      margin-top: 0;
+    }
+
+    .image-panel {
+      display: none;
+      margin-top: 16px;
+      background: #0f172a;
+      border-radius: var(--radius-md);
+      padding: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .image-wrap {
+      width: 100%;
+      max-height: min(62dvh, 520px);
+      overflow: hidden;
+      border-radius: 10px;
+      background: #000000;
+    }
+
+    #sourceImage {
+      display: block;
+      max-width: 100%;
+      max-height: min(62dvh, 520px);
+    }
+
+    .status {
+      min-height: 24px;
+      margin-top: 14px;
+      color: #e5e7eb;
+      text-align: center;
+      font-size: clamp(13px, 3.2vw, 15px);
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .ocr-output {
+      margin-top: 14px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      color: #f9fafb;
+      font-size: clamp(13px, 3.2vw, 15px);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 72px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+      color: #ffffff;
+      font-size: clamp(14px, 3.5vw, 16px);
     }
 
     input {
       width: 100%;
-      box-sizing: border-box;
-      padding: 14px;
-      font-size: 18px;
-      border-radius: 12px;
+      min-height: 54px;
+      padding: 14px 15px;
+      border-radius: var(--radius-md);
       border: 1px solid #4b5563;
       outline: none;
-      margin-top: 10px;
+      font-size: var(--font-input);
+      color: #111827;
+      background: #ffffff;
     }
 
-    .result-box {
-      margin-top: 14px;
-      background: #111827;
-      border: 1px solid #374151;
-      border-radius: 12px;
-      padding: 12px;
-      color: #f9fafb;
-      font-size: 14px;
-      line-height: 1.6;
-      word-break: break-word;
+    input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
     }
 
     .hint {
       margin-top: 14px;
+      color: var(--muted-2);
       text-align: center;
-      color: #9ca3af;
-      font-size: 13px;
+      font-size: clamp(12px, 3vw, 14px);
       line-height: 1.6;
     }
 
-    .warning {
+    .tip {
       margin-top: 14px;
-      background: #374151;
+      background: var(--card-soft);
+      border: 1px solid var(--border);
       color: #f9fafb;
       padding: 12px;
-      border-radius: 12px;
-      font-size: 13px;
-      line-height: 1.6;
+      border-radius: var(--radius-md);
+      font-size: clamp(12px, 3vw, 14px);
+      line-height: 1.65;
     }
 
-    .tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 14px;
-    }
-
-    .tab-btn {
-      margin-top: 0;
-      background: #374151;
-      font-size: 15px;
-      padding: 12px;
-    }
-
-    .tab-btn.active {
-      background: #16a34a;
-    }
-
-    .hidden {
+    .preview-small {
       display: none;
+      margin-top: 12px;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+    }
+
+    .preview-small img {
+      width: 100%;
+      max-height: 160px;
+      object-fit: contain;
+      display: block;
+      border-radius: 8px;
     }
 
     @media (max-width: 420px) {
-      .container {
-        padding: 12px;
+      .page {
+        padding: 10px;
       }
 
       .card {
+        border-radius: 16px;
         padding: 14px;
       }
 
-      h1 {
-        font-size: 22px;
+      .button-grid {
+        grid-template-columns: 1fr;
       }
 
-      button {
-        font-size: 15px;
+      button,
+      .file-button {
+        min-height: 50px;
       }
 
-      .scan-guide {
-        top: 34%;
-        height: 120px;
+      .image-wrap,
+      #sourceImage {
+        max-height: 58dvh;
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 540px) {
+      .image-wrap,
+      #sourceImage {
+        max-height: 52dvh;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <div class="card">
-      <h1>PEA No. Scanner</h1>
+  <main class="page">
+    <div class="container">
+      <section class="card">
+        <h1>PEA No. Scanner</h1>
 
-      <div class="subtitle">
-        วิธีหลัก: อ่านเลข PEA จากภาพด้วย OCR<br>
-        วิธีรอง: อ่าน Barcode แบบเส้น<br>
-        หากอ่านไม่ได้ ให้กรอกเอง
-      </div>
+        <div class="subtitle">
+          ถ่ายภาพหรือเลือกรูป แล้ว Crop เฉพาะบริเวณเลข PEA No.<br>
+          ระบบจะ OCR เฉพาะส่วนที่ Crop และให้ตรวจเลขก่อนส่งกลับ
+        </div>
 
-      <div class="video-box">
-        <video id="cameraVideo" playsinline muted></video>
-        <div class="scan-guide"></div>
-      </div>
-
-      <canvas id="captureCanvas"></canvas>
-
-      <div id="status" class="status">
-        กำลังเตรียมระบบ...
-      </div>
-
-      <div class="tabs">
-        <button id="ocrTabBtn" class="tab-btn active" onclick="setMode('ocr')">OCR เลข PEA</button>
-        <button id="barcodeTabBtn" class="tab-btn" onclick="setMode('barcode')">Barcode</button>
-      </div>
-
-      <button id="startCameraBtn" class="primary-btn" onclick="startCamera()">เปิดกล้อง</button>
-      <button id="captureOcrBtn" class="secondary-btn" onclick="captureAndReadPeaNo()">ถ่ายภาพและอ่านเลข PEA</button>
-      <button id="startBarcodeBtn" class="secondary-btn hidden" onclick="startBarcodeScan()">เริ่มสแกน Barcode</button>
-      <button id="stopBtn" class="danger-btn" onclick="stopAll()">หยุดกล้อง</button>
-
-      <div id="resultBox" class="result-box">
-        ผลลัพธ์ที่อ่านได้จะแสดงที่นี่
-      </div>
-
-      <div class="section">
         <input
-          id="manualCode"
-          type="text"
-          inputmode="numeric"
-          placeholder="กรอก PEA No. เอง หากอ่านไม่ได้"
-          autocomplete="off"
+          id="photoInput"
+          class="file-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
         >
 
-        <button class="primary-btn" onclick="submitManualCode()">ใช้รหัสนี้</button>
-        <button class="back-btn" onclick="goBackWithoutCode()">กลับโดยไม่ส่งรหัส</button>
-      </div>
+        <label for="photoInput" class="file-button primary">
+          ถ่ายภาพ / เลือกรูปมิเตอร์
+        </label>
 
-      <div class="warning">
-        คำแนะนำ OCR: ถ่ายให้เลข “PEA xxxxxxxxxx” อยู่กลางกรอบ ไม่ต้องเน้น Barcode มากเกินไป หลีกเลี่ยงแสงสะท้อนจากฝาครอบ
-      </div>
+        <div id="imagePanel" class="image-panel">
+          <div class="image-wrap">
+            <img id="sourceImage" alt="รูปมิเตอร์สำหรับ Crop">
+          </div>
 
-      <div class="warning">
-        คำแนะนำ Barcode: หากใช้ Barcode ให้ถือมือถือแนวนอน วาง Barcode ให้กินพื้นที่ 60–80% ของความกว้างกล้อง และอย่าเข้าใกล้เกินจนกล้องโฟกัสไม่ได้
-      </div>
+          <div class="button-grid">
+            <button class="gray" onclick="rotateLeft()">หมุนซ้าย</button>
+            <button class="gray" onclick="rotateRight()">หมุนขวา</button>
+            <button class="gray" onclick="zoomIn()">ซูมเข้า</button>
+            <button class="gray" onclick="zoomOut()">ซูมออก</button>
+          </div>
 
-      <div class="hint">
-        หากกล้องไม่เปิด ให้ตรวจสอบว่าเปิดผ่าน HTTPS และอนุญาตการใช้กล้องแล้ว
-      </div>
+          <button id="ocrBtn" class="secondary" onclick="readCroppedPeaNo()">
+            อ่านเลข PEA จากส่วนที่ Crop
+          </button>
+        </div>
+
+        <div id="croppedPreview" class="preview-small">
+          <img id="croppedPreviewImage" alt="ภาพส่วนที่ Crop">
+        </div>
+
+        <div id="status" class="status">
+          กรุณาถ่ายภาพหรือเลือกรูปก่อน
+        </div>
+
+        <div id="ocrOutput" class="ocr-output">
+          ผล OCR จะแสดงที่นี่
+        </div>
+
+        <div class="section">
+          <label for="detectedPeaNo">PEA No. ที่จะส่งกลับ</label>
+          <input
+            id="detectedPeaNo"
+            type="text"
+            inputmode="numeric"
+            placeholder="ตรวจเลข หรือกรอกเอง"
+            autocomplete="off"
+          >
+
+          <button class="primary" onclick="submitDetectedCode()">
+            ใช้เลขนี้
+          </button>
+
+          <button class="orange" onclick="clearAndRetake()">
+            ถ่ายใหม่ / เลือกรูปใหม่
+          </button>
+
+          <button class="gray" onclick="goBackWithoutCode()">
+            กลับโดยไม่ส่งรหัส
+          </button>
+        </div>
+
+        <div class="tip">
+          วิธีใช้ที่แนะนำ:
+          <br>1) ถ่ายให้เห็นบริเวณคำว่า PEA และตัวเลขชัดที่สุด
+          <br>2) Crop ให้เหลือเฉพาะ “PEA xxxxxxxxxx” หรือเฉพาะตัวเลข 10 หลัก
+          <br>3) กดอ่านเลข แล้วตรวจเลขก่อนกด “ใช้เลขนี้”
+          <br>4) ไม่จำเป็นต้องขึ้นต้นด้วย 60, 62, 63, 64, 65
+        </div>
+
+        <div class="hint">
+          ระบบนี้ไม่ใช้ Live OCR/Barcode แล้ว เพื่อให้เหมาะกับรูปมิเตอร์จริงที่มีแสงสะท้อนหรือ Barcode อ่านยาก
+        </div>
+      </section>
     </div>
-  </div>
+  </main>
 
   <script>
-    const video = document.getElementById('cameraVideo');
-    const canvas = document.getElementById('captureCanvas');
+    const photoInput = document.getElementById('photoInput');
+    const imagePanel = document.getElementById('imagePanel');
+    const sourceImage = document.getElementById('sourceImage');
     const statusBox = document.getElementById('status');
-    const resultBox = document.getElementById('resultBox');
-    const manualCode = document.getElementById('manualCode');
+    const ocrOutput = document.getElementById('ocrOutput');
+    const detectedPeaNo = document.getElementById('detectedPeaNo');
+    const ocrBtn = document.getElementById('ocrBtn');
 
-    const ocrTabBtn = document.getElementById('ocrTabBtn');
-    const barcodeTabBtn = document.getElementById('barcodeTabBtn');
-    const startCameraBtn = document.getElementById('startCameraBtn');
-    const captureOcrBtn = document.getElementById('captureOcrBtn');
-    const startBarcodeBtn = document.getElementById('startBarcodeBtn');
-    const stopBtn = document.getElementById('stopBtn');
+    const croppedPreview = document.getElementById('croppedPreview');
+    const croppedPreviewImage = document.getElementById('croppedPreviewImage');
 
     const params = new URLSearchParams(window.location.search);
     const returnUrl = params.get('returnUrl') || '';
 
-    let currentMode = 'ocr';
-    let mediaStream = null;
-    let codeReader = null;
-    let barcodeCompleted = false;
-    let isReadingOcr = false;
+    let cropper = null;
+    let currentObjectUrl = null;
+    let isReading = false;
 
     window.addEventListener('load', function() {
       if (!returnUrl) {
-        setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App');
+        setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App หลัก');
+      }
+    });
+
+    photoInput.addEventListener('change', function(event) {
+      const file = event.target.files && event.target.files[0];
+
+      if (!file) {
         return;
       }
 
-      setMode('ocr');
-      startCamera();
+      loadImageFile(file);
     });
 
-    window.addEventListener('beforeunload', function() {
-      stopAll();
-    });
-
-    manualCode.addEventListener('keydown', function(event) {
+    detectedPeaNo.addEventListener('keydown', function(event) {
       if (event.key === 'Enter') {
-        submitManualCode();
+        submitDetectedCode();
       }
     });
 
-    function setMode(mode) {
-      currentMode = mode;
+    function loadImageFile(file) {
+      destroyCropper();
 
-      if (mode === 'ocr') {
-        ocrTabBtn.classList.add('active');
-        barcodeTabBtn.classList.remove('active');
-        captureOcrBtn.classList.remove('hidden');
-        startBarcodeBtn.classList.add('hidden');
-        setStatus('โหมด OCR: เปิดกล้องแล้วกด “ถ่ายภาพและอ่านเลข PEA”');
-      } else {
-        barcodeTabBtn.classList.add('active');
-        ocrTabBtn.classList.remove('active');
-        startBarcodeBtn.classList.remove('hidden');
-        captureOcrBtn.classList.add('hidden');
-        setStatus('โหมด Barcode: เปิดกล้องแล้วกด “เริ่มสแกน Barcode”');
-      }
-    }
-
-    async function startCamera() {
-      if (!returnUrl) {
-        setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App');
-        return;
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = null;
       }
 
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setStatus('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการเปิดกล้อง');
-        return;
-      }
+      currentObjectUrl = URL.createObjectURL(file);
+      sourceImage.src = currentObjectUrl;
 
-      stopBarcodeReaderOnly_();
+      imagePanel.style.display = 'block';
+      croppedPreview.style.display = 'none';
+      ocrOutput.textContent = 'เลือกรูปแล้ว กรุณาปรับกรอบ Crop ให้ครอบเฉพาะเลข PEA No.';
+      detectedPeaNo.value = '';
+      setStatus('กำลังโหลดรูป...');
 
-      if (mediaStream) {
-        setStatus('กล้องเปิดอยู่แล้ว');
-        return;
-      }
-
-      try {
-        setStatus('กำลังเปิดกล้อง กรุณาอนุญาตการใช้กล้อง');
-
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          },
-          audio: false
+      sourceImage.onload = function() {
+        cropper = new Cropper(sourceImage, {
+          viewMode: 1,
+          dragMode: 'move',
+          autoCrop: true,
+          autoCropArea: 0.55,
+          responsive: true,
+          restore: false,
+          checkOrientation: true,
+          background: false,
+          movable: true,
+          zoomable: true,
+          rotatable: true,
+          scalable: false,
+          guides: true,
+          center: true,
+          highlight: true,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: true,
+          aspectRatio: NaN,
+          ready: function() {
+            setInitialCropBox();
+            setStatus('ปรับกรอบ Crop ให้เหลือเฉพาะเลข PEA No. แล้วกดอ่านเลข');
+          }
         });
-
-        video.srcObject = mediaStream;
-        await video.play();
-
-        setStatus(currentMode === 'ocr'
-          ? 'โหมด OCR: เล็งไปที่เลข PEA แล้วกดถ่ายภาพ'
-          : 'โหมด Barcode: เล็งไปที่ Barcode แล้วกดเริ่มสแกน'
-        );
-
-      } catch (error) {
-        setStatus('เปิดกล้องไม่สำเร็จ: ' + getReadableErrorMessage_(error));
-        stopAll();
-      }
+      };
     }
 
-    async function captureAndReadPeaNo() {
-      if (isReadingOcr) {
+    function setInitialCropBox() {
+      if (!cropper) {
         return;
       }
 
-      if (!video.videoWidth || !video.videoHeight) {
-        setStatus('ยังไม่พบภาพจากกล้อง กรุณาเปิดกล้องก่อน');
+      const containerData = cropper.getContainerData();
+      const cropWidth = containerData.width * 0.86;
+      const cropHeight = Math.max(70, containerData.height * 0.20);
+
+      cropper.setCropBoxData({
+        left: (containerData.width - cropWidth) / 2,
+        top: containerData.height * 0.28,
+        width: cropWidth,
+        height: cropHeight
+      });
+    }
+
+    async function readCroppedPeaNo() {
+      if (isReading) {
+        return;
+      }
+
+      if (!cropper) {
+        setStatus('กรุณาถ่ายภาพหรือเลือกรูปก่อน');
         return;
       }
 
@@ -395,78 +515,94 @@
         return;
       }
 
-      isReadingOcr = true;
-      captureOcrBtn.disabled = true;
-      resultBox.textContent = 'กำลังถ่ายภาพและอ่านเลข PEA...';
+      isReading = true;
+      ocrBtn.disabled = true;
+      ocrBtn.textContent = 'กำลังอ่านเลข...';
 
       try {
-        const imageDataUrl = captureEnhancedFrame_();
+        setStatus('กำลังเตรียมภาพ Crop สำหรับ OCR');
 
-        setStatus('กำลัง OCR ภาพ กรุณารอสักครู่');
+        const croppedCanvas = cropper.getCroppedCanvas({
+          minWidth: 800,
+          minHeight: 180,
+          maxWidth: 2200,
+          maxHeight: 700,
+          imageSmoothingEnabled: true,
+          imageSmoothingQuality: 'high',
+          fillColor: '#ffffff'
+        });
 
-        const ocrResult = await Tesseract.recognize(
+        if (!croppedCanvas) {
+          throw new Error('ไม่สามารถสร้างภาพ Crop ได้');
+        }
+
+        const processedCanvas = preprocessForOcr(croppedCanvas);
+        const imageDataUrl = processedCanvas.toDataURL('image/png');
+
+        croppedPreviewImage.src = imageDataUrl;
+        croppedPreview.style.display = 'block';
+
+        setStatus('กำลัง OCR เฉพาะส่วนที่ Crop กรุณารอสักครู่');
+        ocrOutput.textContent = 'กำลัง OCR...';
+
+        const result = await Tesseract.recognize(
           imageDataUrl,
           'eng',
           {
-            tessedit_char_whitelist: 'PEA0123456789 .:-',
+            tessedit_char_whitelist: 'PEA0123456789 .:-/|',
             logger: function(m) {
               if (m && m.status) {
-                const progress = m.progress ? Math.round(m.progress * 100) : '';
+                const progress = typeof m.progress === 'number'
+                  ? Math.round(m.progress * 100)
+                  : '';
+
                 setStatus('OCR: ' + m.status + (progress ? ' ' + progress + '%' : ''));
               }
             }
           }
         );
 
-        const text = ocrResult && ocrResult.data && ocrResult.data.text
-          ? ocrResult.data.text
+        const text = result && result.data && result.data.text
+          ? result.data.text
           : '';
 
-        const peaNo = extractPeaNoFromText_(text);
+        const candidates = extractPeaCandidates(text);
+        const best = candidates.length > 0 ? candidates[0] : '';
 
-        resultBox.textContent =
-          'ข้อความที่ OCR อ่านได้:\n' + text.trim() +
-          '\n\nPEA No. ที่ตรวจพบ: ' + (peaNo || '-');
+        ocrOutput.textContent =
+          'ข้อความที่ OCR อ่านได้:\n' +
+          (text.trim() || '-') +
+          '\n\nเลขที่ระบบพบ:\n' +
+          (candidates.length > 0 ? candidates.join('\n') : '-');
 
-        if (peaNo) {
-          setStatus('พบ PEA No.: ' + peaNo + ' กำลังกลับไปตรวจสอบ');
-          stopAll();
-          redirectBackWithCode(peaNo);
+        if (best) {
+          detectedPeaNo.value = best;
+          setStatus('พบเลขที่น่าจะเป็น PEA No. กรุณาตรวจสอบก่อนกด “ใช้เลขนี้”');
         } else {
-          setStatus('ยังไม่พบเลข PEA 10 หลัก กรุณาถ่ายใหม่หรือกรอกเอง');
+          setStatus('ยังไม่พบเลข 10 หลัก กรุณา Crop ใหม่หรือกรอกเอง');
         }
 
       } catch (error) {
-        setStatus('OCR ไม่สำเร็จ: ' + getReadableErrorMessage_(error));
+        ocrOutput.textContent = 'OCR ไม่สำเร็จ';
+        setStatus('OCR ไม่สำเร็จ: ' + getReadableErrorMessage(error));
       } finally {
-        isReadingOcr = false;
-        captureOcrBtn.disabled = false;
+        isReading = false;
+        ocrBtn.disabled = false;
+        ocrBtn.textContent = 'อ่านเลข PEA จากส่วนที่ Crop';
       }
     }
 
-    function captureEnhancedFrame_() {
-      const sourceWidth = video.videoWidth;
-      const sourceHeight = video.videoHeight;
-
-      const crop = getCenterCrop_(sourceWidth, sourceHeight);
-
+    function preprocessForOcr(sourceCanvas) {
       const scale = 2;
-      canvas.width = crop.width * scale;
-      canvas.height = crop.height * scale;
+      const canvas = document.createElement('canvas');
+      canvas.width = sourceCanvas.width * scale;
+      canvas.height = sourceCanvas.height * scale;
 
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-      ctx.drawImage(
-        video,
-        crop.x,
-        crop.y,
-        crop.width,
-        crop.height,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
@@ -478,7 +614,10 @@
 
         let gray = 0.299 * r + 0.587 * g + 0.114 * b;
 
-        gray = gray > 150 ? 255 : 0;
+        gray = (gray - 128) * 1.55 + 128;
+
+        if (gray > 255) gray = 255;
+        if (gray < 0) gray = 0;
 
         data[i] = gray;
         data[i + 1] = gray;
@@ -487,211 +626,98 @@
 
       ctx.putImageData(imageData, 0, 0);
 
-      return canvas.toDataURL('image/png');
+      return canvas;
     }
 
-    function getCenterCrop_(width, height) {
-      const cropWidth = Math.floor(width * 0.92);
-      const cropHeight = Math.floor(height * 0.55);
-
-      return {
-        x: Math.floor((width - cropWidth) / 2),
-        y: Math.floor((height - cropHeight) * 0.35),
-        width: cropWidth,
-        height: cropHeight
-      };
-    }
-
-    function extractPeaNoFromText_(text) {
-      const normalized = String(text || '')
+    function extractPeaCandidates(text) {
+      const raw = String(text || '')
         .replace(/[Oo]/g, '0')
         .replace(/[Il|]/g, '1')
         .replace(/[Ss]/g, '5')
         .replace(/[Bb]/g, '8')
-        .replace(/\s+/g, ' ')
-        .toUpperCase();
+        .replace(/[Zz]/g, '2');
 
-      const peaPattern = /P\s*E\s*A[\s.:/-]*([0-9][0-9\s.-]{7,18}[0-9])/i;
-      const peaMatch = normalized.match(peaPattern);
+      const compact = raw
+        .toUpperCase()
+        .replace(/\s+/g, ' ');
 
-      if (peaMatch && peaMatch[1]) {
-        const digits = peaMatch[1].replace(/[^\d]/g, '');
-        const candidate = pickBestPeaCandidate_(digits);
+      const candidates = [];
 
-        if (candidate) {
-          return candidate;
-        }
+      const peaPattern = /P\s*E\s*A[\s.:/-]*([0-9][0-9\s.:/-]{8,24}[0-9])/gi;
+      let match;
+
+      while ((match = peaPattern.exec(compact)) !== null) {
+        const digits = String(match[1] || '').replace(/[^\d]/g, '');
+        addCandidatesFromDigits(candidates, digits);
       }
 
-      const allDigitGroups = normalized.match(/[0-9][0-9\s.-]{7,18}[0-9]/g) || [];
+      const digitGroups = compact.match(/[0-9][0-9\s.:/-]{8,24}[0-9]/g) || [];
 
-      for (const group of allDigitGroups) {
-        const digits = group.replace(/[^\d]/g, '');
-        const candidate = pickBestPeaCandidate_(digits);
+      digitGroups.forEach(function(group) {
+        const digits = String(group || '').replace(/[^\d]/g, '');
+        addCandidatesFromDigits(candidates, digits);
+      });
 
-        if (candidate) {
-          return candidate;
-        }
-      }
+      const allDigits = compact.replace(/[^\d]/g, '');
+      addCandidatesFromDigits(candidates, allDigits);
 
-      const allDigits = normalized.replace(/[^\d]/g, '');
-      const candidate = pickBestPeaCandidate_(allDigits);
-
-      return candidate || '';
+      return uniqueCandidates(candidates);
     }
 
-    function pickBestPeaCandidate_(digits) {
+    function addCandidatesFromDigits(candidates, digits) {
       const cleaned = String(digits || '').replace(/[^\d]/g, '');
 
-      if (cleaned.length < 9) {
-        return '';
+      if (cleaned.length < 10) {
+        return;
       }
 
       if (cleaned.length === 10) {
-        return cleaned;
+        candidates.push(cleaned);
+        return;
       }
-
-      const preferredPrefixes = ['60', '61', '62', '63', '64', '65'];
 
       for (let i = 0; i <= cleaned.length - 10; i++) {
-        const candidate = cleaned.slice(i, i + 10);
-
-        if (preferredPrefixes.includes(candidate.slice(0, 2))) {
-          return candidate;
-        }
-      }
-
-      return cleaned.slice(0, 10);
-    }
-
-    function startBarcodeScan() {
-      if (!returnUrl) {
-        setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App');
-        return;
-      }
-
-      if (!window.ZXing) {
-        setStatus('โหลดระบบ Barcode ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต');
-        return;
-      }
-
-      stopBarcodeReaderOnly_();
-
-      barcodeCompleted = false;
-      setStatus('กำลังเริ่มสแกน Barcode แบบเส้น');
-
-      try {
-        codeReader = createBarcodeReader_();
-
-        const constraints = {
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          },
-          audio: false
-        };
-
-        codeReader.decodeFromConstraints(
-          constraints,
-          'cameraVideo',
-          function(result, err) {
-            if (barcodeCompleted) {
-              return;
-            }
-
-            if (result) {
-              barcodeCompleted = true;
-
-              const scannedText = String(result.getText() || '').trim();
-              const peaNo = extractPeaNoFromText_(scannedText) || scannedText.replace(/[^\d]/g, '');
-
-              resultBox.textContent =
-                'Barcode ที่อ่านได้: ' + scannedText +
-                '\nPEA No. ที่จะส่งกลับ: ' + peaNo;
-
-              if (peaNo) {
-                setStatus('สแกน Barcode สำเร็จ: ' + peaNo);
-                stopAll();
-                redirectBackWithCode(peaNo);
-              }
-            }
-          }
-        );
-
-        setStatus('นำ Barcode แบบเส้นให้อยู่กลางภาพ');
-
-      } catch (error) {
-        setStatus('Barcode scan ไม่สำเร็จ: ' + getReadableErrorMessage_(error));
-        stopBarcodeReaderOnly_();
+        candidates.push(cleaned.slice(i, i + 10));
       }
     }
 
-    function createBarcodeReader_() {
-      try {
-        const hints = new Map();
+    function uniqueCandidates(values) {
+      const seen = {};
+      const output = [];
 
-        if (ZXing.DecodeHintType && ZXing.BarcodeFormat) {
-          hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-            ZXing.BarcodeFormat.CODE_128,
-            ZXing.BarcodeFormat.CODE_39,
-            ZXing.BarcodeFormat.CODE_93,
-            ZXing.BarcodeFormat.EAN_13,
-            ZXing.BarcodeFormat.EAN_8,
-            ZXing.BarcodeFormat.ITF
-          ]);
+      values.forEach(function(value) {
+        const cleaned = String(value || '').replace(/[^\d]/g, '');
 
-          hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-
-          return new ZXing.BrowserMultiFormatReader(hints, 250);
+        if (cleaned.length !== 10) {
+          return;
         }
-      } catch (e) {}
 
-      return new ZXing.BrowserMultiFormatReader();
+        if (!seen[cleaned]) {
+          seen[cleaned] = true;
+          output.push(cleaned);
+        }
+      });
+
+      return output;
     }
 
-    function stopBarcodeReaderOnly_() {
-      try {
-        if (codeReader) {
-          codeReader.reset();
-          codeReader = null;
-        }
-      } catch (e) {}
-    }
-
-    function stopAll() {
-      stopBarcodeReaderOnly_();
-
-      try {
-        if (mediaStream) {
-          mediaStream.getTracks().forEach(function(track) {
-            track.stop();
-          });
-          mediaStream = null;
-        }
-      } catch (e) {}
-
-      try {
-        video.srcObject = null;
-      } catch (e) {}
-    }
-
-    function submitManualCode() {
-      const code = manualCode.value.trim();
+    function submitDetectedCode() {
+      const code = String(detectedPeaNo.value || '').replace(/[^\d]/g, '');
 
       if (!code) {
-        setStatus('กรุณากรอกรหัสก่อน');
+        setStatus('กรุณากรอกหรือ OCR เลข PEA No. ก่อน');
         return;
       }
 
-      const peaNo = extractPeaNoFromText_(code) || code.replace(/[^\d]/g, '');
+      if (code.length !== 10) {
+        const ok = confirm('เลขที่กรอกมี ' + code.length + ' หลัก ไม่ใช่ 10 หลัก ต้องการใช้เลขนี้ต่อหรือไม่?');
 
-      if (!peaNo) {
-        setStatus('ไม่พบตัวเลขที่ใช้เป็น PEA No.');
-        return;
+        if (!ok) {
+          return;
+        }
       }
 
-      redirectBackWithCode(peaNo);
+      redirectBackWithCode(code);
     }
 
     function redirectBackWithCode(code) {
@@ -707,8 +733,6 @@
     }
 
     function goBackWithoutCode() {
-      stopAll();
-
       if (returnUrl) {
         window.location.href = returnUrl;
       } else {
@@ -716,28 +740,52 @@
       }
     }
 
-    function getReadableErrorMessage_(error) {
+    function clearAndRetake() {
+      detectedPeaNo.value = '';
+      ocrOutput.textContent = 'ผล OCR จะแสดงที่นี่';
+      croppedPreview.style.display = 'none';
+      photoInput.value = '';
+      setStatus('กรุณาถ่ายภาพหรือเลือกรูปใหม่');
+      photoInput.click();
+    }
+
+    function rotateLeft() {
+      if (cropper) {
+        cropper.rotate(-90);
+      }
+    }
+
+    function rotateRight() {
+      if (cropper) {
+        cropper.rotate(90);
+      }
+    }
+
+    function zoomIn() {
+      if (cropper) {
+        cropper.zoom(0.1);
+      }
+    }
+
+    function zoomOut() {
+      if (cropper) {
+        cropper.zoom(-0.1);
+      }
+    }
+
+    function destroyCropper() {
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    }
+
+    function getReadableErrorMessage(error) {
       const message = String(
         error && (error.message || error.name)
           ? (error.message || error.name)
           : error || ''
       );
-
-      if (message.includes('NotAllowedError') || message.includes('Permission')) {
-        return 'ผู้ใช้ไม่อนุญาตให้ใช้กล้อง';
-      }
-
-      if (message.includes('NotFoundError')) {
-        return 'ไม่พบกล้อง';
-      }
-
-      if (message.includes('NotReadableError')) {
-        return 'กล้องถูกใช้งานโดยแอปอื่น';
-      }
-
-      if (message.includes('OverconstrainedError')) {
-        return 'กล้องไม่รองรับความละเอียดที่ร้องขอ';
-      }
 
       return message || 'ไม่ทราบสาเหตุ';
     }
