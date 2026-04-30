@@ -41,9 +41,11 @@
       color: #d1d5db;
       font-size: 14px;
       margin-bottom: 18px;
+      line-height: 1.5;
     }
 
     .video-box {
+      position: relative;
       background: #000000;
       border-radius: 16px;
       padding: 10px;
@@ -55,6 +57,28 @@
       max-height: 420px;
       border-radius: 12px;
       background: #000000;
+    }
+
+    .scan-guide {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 45%;
+      height: 70px;
+      border: 2px solid #22c55e;
+      border-radius: 10px;
+      pointer-events: none;
+      box-shadow: 0 0 0 999px rgba(0,0,0,0.25);
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: calc(45% + 35px);
+      height: 2px;
+      background: #22c55e;
+      pointer-events: none;
     }
 
     .status {
@@ -76,6 +100,11 @@
       font-weight: bold;
       color: #ffffff;
       cursor: pointer;
+    }
+
+    button:disabled {
+      background: #6b7280 !important;
+      cursor: not-allowed;
     }
 
     .start-btn {
@@ -111,7 +140,44 @@
       text-align: center;
       color: #9ca3af;
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+
+    .warning {
+      margin-top: 14px;
+      background: #374151;
+      color: #f9fafb;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 420px) {
+      .container {
+        padding: 14px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      button {
+        font-size: 16px;
+      }
+
+      .scan-guide {
+        top: 43%;
+        height: 60px;
+      }
+
+      .scan-line {
+        top: calc(43% + 30px);
+      }
     }
   </style>
 </head>
@@ -120,21 +186,39 @@
   <div class="container">
     <div class="card">
       <h1>PEA Barcode Scanner</h1>
-      <div class="subtitle">สแกน Barcode แล้วระบบจะกลับไปตรวจสอบอัตโนมัติ</div>
+
+      <div class="subtitle">
+        สแกน Barcode แบบเส้น แล้วระบบจะกลับไปตรวจสอบอัตโนมัติ
+      </div>
 
       <div class="video-box">
         <video id="barcodeVideo" playsinline muted></video>
+        <div class="scan-guide"></div>
+        <div class="scan-line"></div>
       </div>
 
-      <div id="status" class="status">กำลังเตรียมระบบสแกน...</div>
+      <div id="status" class="status">
+        กำลังเตรียมระบบสแกน...
+      </div>
 
-      <button class="start-btn" onclick="startScanner()">เริ่มสแกน</button>
-      <button class="stop-btn" onclick="stopScanner()">หยุดกล้อง</button>
+      <button id="startBtn" class="start-btn" onclick="startScanner()">เริ่มสแกน</button>
+      <button id="stopBtn" class="stop-btn" onclick="stopScanner()">หยุดกล้อง</button>
       <button class="back-btn" onclick="goBackWithoutCode()">กลับโดยไม่สแกน</button>
 
       <div class="manual-box">
-        <input id="manualCode" type="text" inputmode="numeric" placeholder="กรอก PEA No. เอง หากสแกนไม่ได้">
+        <input
+          id="manualCode"
+          type="text"
+          inputmode="numeric"
+          placeholder="กรอก PEA No. เอง หากสแกนไม่ได้"
+          autocomplete="off"
+        >
+
         <button class="start-btn" onclick="submitManualCode()">ใช้รหัสนี้</button>
+      </div>
+
+      <div class="warning">
+        คำแนะนำ: วาง Barcode แนวนอนให้อยู่กลางกรอบสีเขียว ให้กินพื้นที่ประมาณ 60–80% ของความกว้างกล้อง และหลีกเลี่ยงแสงสะท้อน
       </div>
 
       <div class="hint">
@@ -147,12 +231,15 @@
     const video = document.getElementById('barcodeVideo');
     const statusBox = document.getElementById('status');
     const manualCode = document.getElementById('manualCode');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
 
     const params = new URLSearchParams(window.location.search);
     const returnUrl = params.get('returnUrl') || '';
 
     let codeReader = null;
     let scanCompleted = false;
+    let isScanning = false;
 
     window.addEventListener('load', function() {
       if (!returnUrl) {
@@ -167,7 +254,17 @@
       stopScanner();
     });
 
+    manualCode.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        submitManualCode();
+      }
+    });
+
     function startScanner() {
+      if (isScanning) {
+        return;
+      }
+
       if (!returnUrl) {
         setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App');
         return;
@@ -186,48 +283,48 @@
       stopScanner();
 
       scanCompleted = false;
+      isScanning = true;
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
       setStatus('กำลังเปิดกล้อง กรุณาอนุญาตการใช้กล้อง');
 
       try {
         codeReader = createBarcodeReader_();
 
-        codeReader
-          .listVideoInputDevices()
-          .then(function(videoInputDevices) {
-            if (!videoInputDevices || videoInputDevices.length === 0) {
-              throw new Error('ไม่พบกล้องในอุปกรณ์นี้');
+        const constraints = {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
+          audio: false
+        };
+
+        codeReader.decodeFromConstraints(
+          constraints,
+          'barcodeVideo',
+          function(result, err) {
+            if (scanCompleted) {
+              return;
             }
 
-            const selectedDeviceId = selectBackCamera_(videoInputDevices);
+            if (result) {
+              scanCompleted = true;
 
-            setStatus('นำ Barcode ให้อยู่ในกรอบกล้อง');
+              const scannedText = String(result.getText() || '').trim();
 
-            return codeReader.decodeFromVideoDevice(
-              selectedDeviceId,
-              'barcodeVideo',
-              function(result, err) {
-                if (scanCompleted) {
-                  return;
-                }
-
-                if (result) {
-                  scanCompleted = true;
-
-                  const scannedText = String(result.getText() || '').trim();
-
-                  if (scannedText) {
-                    setStatus('สแกนสำเร็จ: ' + scannedText);
-                    stopScanner();
-                    redirectBackWithCode(scannedText);
-                  }
-                }
+              if (scannedText) {
+                setStatus('สแกนสำเร็จ: ' + scannedText);
+                stopScanner();
+                redirectBackWithCode(scannedText);
               }
-            );
-          })
-          .catch(function(error) {
-            setStatus('เปิดกล้องหรือสแกนไม่สำเร็จ: ' + getReadableErrorMessage_(error));
-            stopScanner();
-          });
+            }
+          }
+        );
+
+        setStatus('นำ Barcode แบบเส้นให้อยู่ในกรอบสีเขียว');
 
       } catch (error) {
         setStatus('เปิดกล้องหรือสแกนไม่สำเร็จ: ' + getReadableErrorMessage_(error));
@@ -242,6 +339,10 @@
           codeReader = null;
         }
       } catch (e) {}
+
+      isScanning = false;
+      startBtn.disabled = false;
+      stopBtn.disabled = false;
     }
 
     function submitManualCode() {
@@ -256,13 +357,20 @@
     }
 
     function redirectBackWithCode(code) {
-      const target = new URL(returnUrl);
+      if (!returnUrl) {
+        setStatus('ไม่พบ returnUrl ไม่สามารถกลับไปยัง Web App ได้');
+        return;
+      }
+
+      const target = new URL(returnUrl, window.location.href);
       target.searchParams.set('peaNo', code);
 
       window.location.href = target.toString();
     }
 
     function goBackWithoutCode() {
+      stopScanner();
+
       if (returnUrl) {
         window.location.href = returnUrl;
       } else {
@@ -281,38 +389,24 @@
             ZXing.BarcodeFormat.CODE_93,
             ZXing.BarcodeFormat.EAN_13,
             ZXing.BarcodeFormat.EAN_8,
-            ZXing.BarcodeFormat.ITF,
-            ZXing.BarcodeFormat.QR_CODE
+            ZXing.BarcodeFormat.ITF
           ]);
 
-          return new ZXing.BrowserMultiFormatReader(hints);
+          hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+          return new ZXing.BrowserMultiFormatReader(hints, 250);
         }
       } catch (e) {}
 
       return new ZXing.BrowserMultiFormatReader();
     }
 
-    function selectBackCamera_(videoInputDevices) {
-      const backCamera = videoInputDevices.find(function(device) {
-        const label = String(device.label || '').toLowerCase();
-
-        return (
-          label.includes('back') ||
-          label.includes('rear') ||
-          label.includes('environment') ||
-          label.includes('หลัง')
-        );
-      });
-
-      if (backCamera) {
-        return backCamera.deviceId;
-      }
-
-      return videoInputDevices[videoInputDevices.length - 1].deviceId;
-    }
-
     function getReadableErrorMessage_(error) {
-      const message = String(error && (error.message || error.name) ? (error.message || error.name) : error || '');
+      const message = String(
+        error && (error.message || error.name)
+          ? (error.message || error.name)
+          : error || ''
+      );
 
       if (message.includes('NotAllowedError') || message.includes('Permission')) {
         return 'ผู้ใช้ไม่อนุญาตให้ใช้กล้อง';
@@ -324,6 +418,10 @@
 
       if (message.includes('NotReadableError')) {
         return 'กล้องถูกใช้งานโดยแอปอื่น';
+      }
+
+      if (message.includes('OverconstrainedError')) {
+        return 'กล้องไม่รองรับความละเอียดที่ร้องขอ';
       }
 
       return message || 'ไม่ทราบสาเหตุ';
