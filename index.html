@@ -2,17 +2,9 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-  <title>PEA No. Photo Crop OCR Scanner</title>
-
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css"
-  >
-
-  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <title>PEA No. Typhoon OCR Scanner</title>
 
   <style>
     :root {
@@ -101,12 +93,6 @@
       margin-bottom: 18px;
     }
 
-    .section {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-    }
-
     .file-input {
       display: none;
     }
@@ -153,38 +139,22 @@
       background: var(--orange);
     }
 
-    .button-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .button-grid button {
-      margin-top: 0;
-    }
-
-    .image-panel {
+    .preview-panel {
       display: none;
       margin-top: 16px;
       background: #0f172a;
+      border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 10px;
-      border: 1px solid var(--border);
     }
 
-    .image-wrap {
+    .preview-panel img {
       width: 100%;
       max-height: min(62dvh, 520px);
-      overflow: hidden;
+      object-fit: contain;
+      display: block;
       border-radius: 10px;
       background: #000000;
-    }
-
-    #sourceImage {
-      display: block;
-      max-width: 100%;
-      max-height: min(62dvh, 520px);
     }
 
     .status {
@@ -197,23 +167,9 @@
       word-break: break-word;
     }
 
-    .ocr-output {
-      margin-top: 14px;
-      background: #0f172a;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 12px;
-      color: #f9fafb;
-      font-size: clamp(13px, 3.2vw, 15px);
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
-      min-height: 72px;
-    }
-
     label {
       display: block;
-      margin-bottom: 8px;
+      margin: 18px 0 8px;
       font-weight: 700;
       color: #ffffff;
       font-size: clamp(14px, 3.5vw, 16px);
@@ -255,21 +211,20 @@
       line-height: 1.65;
     }
 
-    .preview-small {
+    .loading {
       display: none;
-      margin-top: 12px;
-      background: #000000;
-      border: 1px solid var(--border);
+      margin-top: 14px;
+      padding: 12px;
       border-radius: var(--radius-md);
-      padding: 8px;
+      background: #0f172a;
+      color: #f9fafb;
+      text-align: center;
+      line-height: 1.6;
+      border: 1px solid var(--border);
     }
 
-    .preview-small img {
-      width: 100%;
-      max-height: 160px;
-      object-fit: contain;
-      display: block;
-      border-radius: 8px;
+    canvas {
+      display: none;
     }
 
     @media (max-width: 420px) {
@@ -282,25 +237,9 @@
         padding: 14px;
       }
 
-      .button-grid {
-        grid-template-columns: 1fr;
-      }
-
       button,
       .file-button {
         min-height: 50px;
-      }
-
-      .image-wrap,
-      #sourceImage {
-        max-height: 58dvh;
-      }
-    }
-
-    @media (orientation: landscape) and (max-height: 540px) {
-      .image-wrap,
-      #sourceImage {
-        max-height: 52dvh;
       }
     }
   </style>
@@ -313,8 +252,8 @@
         <h1>PEA No. Scanner</h1>
 
         <div class="subtitle">
-          ถ่ายภาพหรือเลือกรูป แล้ว Crop เฉพาะบริเวณเลข PEA No.<br>
-          ระบบจะ OCR เฉพาะส่วนที่ Crop และให้ตรวจเลขก่อนส่งกลับ
+          ถ่ายภาพมิเตอร์ทั้งภาพ แล้วส่งให้ Typhoon OCR อ่านเลข PEA No.<br>
+          ไม่ต้อง Crop ภาพเอง
         </div>
 
         <input
@@ -329,95 +268,90 @@
           ถ่ายภาพ / เลือกรูปมิเตอร์
         </label>
 
-        <div id="imagePanel" class="image-panel">
-          <div class="image-wrap">
-            <img id="sourceImage" alt="รูปมิเตอร์สำหรับ Crop">
-          </div>
-
-          <div class="button-grid">
-            <button class="gray" onclick="rotateLeft()">หมุนซ้าย</button>
-            <button class="gray" onclick="rotateRight()">หมุนขวา</button>
-            <button class="gray" onclick="zoomIn()">ซูมเข้า</button>
-            <button class="gray" onclick="zoomOut()">ซูมออก</button>
-          </div>
-
-          <button id="ocrBtn" class="secondary" onclick="readCroppedPeaNo()">
-            อ่านเลข PEA จากส่วนที่ Crop
-          </button>
+        <div id="previewPanel" class="preview-panel">
+          <img id="previewImage" alt="ภาพมิเตอร์ที่เลือก">
         </div>
 
-        <div id="croppedPreview" class="preview-small">
-          <img id="croppedPreviewImage" alt="ภาพส่วนที่ Crop">
+        <button id="sendBtn" class="secondary" onclick="sendImageToTyphoon()" disabled>
+          ส่งภาพให้ Typhoon OCR อ่าน
+        </button>
+
+        <div id="loadingBox" class="loading">
+          กำลังเตรียมรูปภาพและส่งให้ Typhoon OCR...<br>
+          กรุณารอสักครู่
         </div>
 
         <div id="status" class="status">
-          กรุณาถ่ายภาพหรือเลือกรูปก่อน
+          กรุณาถ่ายภาพหรือเลือกรูปมิเตอร์ก่อน
         </div>
 
-        <div id="ocrOutput" class="ocr-output">
-          ผล OCR จะแสดงที่นี่
-        </div>
+        <label for="manualCode">กรอก PEA No. เอง หากจำเป็น</label>
+        <input
+          id="manualCode"
+          type="text"
+          inputmode="numeric"
+          placeholder="กรอก PEA No. เอง"
+          autocomplete="off"
+        >
 
-        <div class="section">
-          <label for="detectedPeaNo">PEA No. ที่จะส่งกลับ</label>
-          <input
-            id="detectedPeaNo"
-            type="text"
-            inputmode="numeric"
-            placeholder="ตรวจเลข หรือกรอกเอง"
-            autocomplete="off"
-          >
+        <button class="primary" onclick="submitManualCode()">
+          ใช้เลขที่กรอก
+        </button>
 
-          <button class="primary" onclick="submitDetectedCode()">
-            ใช้เลขนี้
-          </button>
-
-          <button class="orange" onclick="clearAndRetake()">
-            ถ่ายใหม่ / เลือกรูปใหม่
-          </button>
-
-          <button class="gray" onclick="goBackWithoutCode()">
-            กลับโดยไม่ส่งรหัส
-          </button>
-        </div>
+        <button class="gray" onclick="goBackWithoutCode()">
+          กลับโดยไม่ส่งรหัส
+        </button>
 
         <div class="tip">
-          วิธีใช้ที่แนะนำ:
-          <br>1) ถ่ายให้เห็นบริเวณคำว่า PEA และตัวเลขชัดที่สุด
-          <br>2) Crop ให้เหลือเฉพาะ “PEA xxxxxxxxxx” หรือเฉพาะตัวเลข 10 หลัก
-          <br>3) กดอ่านเลข แล้วตรวจเลขก่อนกด “ใช้เลขนี้”
-          <br>4) ไม่จำเป็นต้องขึ้นต้นด้วย 60, 62, 63, 64, 65
+          คำแนะนำ:
+          <br>1) ถ่ายให้เห็นบริเวณคำว่า PEA และเลขบนป้ายให้ชัด
+          <br>2) หลีกเลี่ยงแสงสะท้อนจากฝาครอบมิเตอร์
+          <br>3) ไม่จำเป็นต้อง Crop ภาพ
+          <br>4) หลัง Typhoon OCR อ่านเสร็จ ระบบจะให้ตรวจเลขก่อนส่งกลับ
         </div>
 
         <div class="hint">
-          ระบบนี้ไม่ใช้ Live OCR/Barcode แล้ว เพื่อให้เหมาะกับรูปมิเตอร์จริงที่มีแสงสะท้อนหรือ Barcode อ่านยาก
+          ระบบจะบีบอัดภาพในเครื่องก่อนส่ง เพื่อให้ส่งผ่าน Apps Script ได้ง่ายขึ้น
         </div>
+
+        <canvas id="workCanvas"></canvas>
+
+        <form id="ocrForm" method="post" style="display:none;">
+          <input type="hidden" name="action" value="typhoonOcr">
+          <input type="hidden" id="returnUrlField" name="returnUrl">
+          <input type="hidden" id="mimeTypeField" name="mimeType" value="image/jpeg">
+          <input type="hidden" id="imageBase64Field" name="imageBase64">
+        </form>
       </section>
     </div>
   </main>
 
   <script>
     const photoInput = document.getElementById('photoInput');
-    const imagePanel = document.getElementById('imagePanel');
-    const sourceImage = document.getElementById('sourceImage');
+    const previewPanel = document.getElementById('previewPanel');
+    const previewImage = document.getElementById('previewImage');
+    const sendBtn = document.getElementById('sendBtn');
+    const loadingBox = document.getElementById('loadingBox');
     const statusBox = document.getElementById('status');
-    const ocrOutput = document.getElementById('ocrOutput');
-    const detectedPeaNo = document.getElementById('detectedPeaNo');
-    const ocrBtn = document.getElementById('ocrBtn');
+    const manualCode = document.getElementById('manualCode');
+    const workCanvas = document.getElementById('workCanvas');
 
-    const croppedPreview = document.getElementById('croppedPreview');
-    const croppedPreviewImage = document.getElementById('croppedPreviewImage');
+    const ocrForm = document.getElementById('ocrForm');
+    const returnUrlField = document.getElementById('returnUrlField');
+    const mimeTypeField = document.getElementById('mimeTypeField');
+    const imageBase64Field = document.getElementById('imageBase64Field');
 
     const params = new URLSearchParams(window.location.search);
     const returnUrl = params.get('returnUrl') || '';
 
-    let cropper = null;
-    let currentObjectUrl = null;
-    let isReading = false;
+    let selectedFile = null;
+    let selectedObjectUrl = null;
 
     window.addEventListener('load', function() {
       if (!returnUrl) {
-        setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App หลัก');
+        setStatus('ไม่พบ returnUrl กรุณาเปิดหน้านี้จากปุ่มสแกนใน Web App หลัก');
+      } else {
+        setStatus('พร้อมใช้งาน กรุณาถ่ายภาพหรือเลือกรูปมิเตอร์');
       }
     });
 
@@ -428,293 +362,133 @@
         return;
       }
 
-      loadImageFile(file);
+      selectedFile = file;
+
+      if (selectedObjectUrl) {
+        URL.revokeObjectURL(selectedObjectUrl);
+        selectedObjectUrl = null;
+      }
+
+      selectedObjectUrl = URL.createObjectURL(file);
+      previewImage.src = selectedObjectUrl;
+      previewPanel.style.display = 'block';
+      sendBtn.disabled = false;
+
+      setStatus('เลือกรูปแล้ว กด “ส่งภาพให้ Typhoon OCR อ่าน”');
     });
 
-    detectedPeaNo.addEventListener('keydown', function(event) {
+    manualCode.addEventListener('keydown', function(event) {
       if (event.key === 'Enter') {
-        submitDetectedCode();
+        submitManualCode();
       }
     });
 
-    function loadImageFile(file) {
-      destroyCropper();
-
-      if (currentObjectUrl) {
-        URL.revokeObjectURL(currentObjectUrl);
-        currentObjectUrl = null;
-      }
-
-      currentObjectUrl = URL.createObjectURL(file);
-      sourceImage.src = currentObjectUrl;
-
-      imagePanel.style.display = 'block';
-      croppedPreview.style.display = 'none';
-      ocrOutput.textContent = 'เลือกรูปแล้ว กรุณาปรับกรอบ Crop ให้ครอบเฉพาะเลข PEA No.';
-      detectedPeaNo.value = '';
-      setStatus('กำลังโหลดรูป...');
-
-      sourceImage.onload = function() {
-        cropper = new Cropper(sourceImage, {
-          viewMode: 1,
-          dragMode: 'move',
-          autoCrop: true,
-          autoCropArea: 0.55,
-          responsive: true,
-          restore: false,
-          checkOrientation: true,
-          background: false,
-          movable: true,
-          zoomable: true,
-          rotatable: true,
-          scalable: false,
-          guides: true,
-          center: true,
-          highlight: true,
-          cropBoxMovable: true,
-          cropBoxResizable: true,
-          toggleDragModeOnDblclick: true,
-          aspectRatio: NaN,
-          ready: function() {
-            setInitialCropBox();
-            setStatus('ปรับกรอบ Crop ให้เหลือเฉพาะเลข PEA No. แล้วกดอ่านเลข');
-          }
-        });
-      };
-    }
-
-    function setInitialCropBox() {
-      if (!cropper) {
+    async function sendImageToTyphoon() {
+      if (!returnUrl) {
+        setStatus('ไม่พบ returnUrl ไม่สามารถส่งกลับ Web App หลักได้');
         return;
       }
 
-      const containerData = cropper.getContainerData();
-      const cropWidth = containerData.width * 0.86;
-      const cropHeight = Math.max(70, containerData.height * 0.20);
-
-      cropper.setCropBoxData({
-        left: (containerData.width - cropWidth) / 2,
-        top: containerData.height * 0.28,
-        width: cropWidth,
-        height: cropHeight
-      });
-    }
-
-    async function readCroppedPeaNo() {
-      if (isReading) {
-        return;
-      }
-
-      if (!cropper) {
+      if (!selectedFile) {
         setStatus('กรุณาถ่ายภาพหรือเลือกรูปก่อน');
         return;
       }
 
-      if (!window.Tesseract) {
-        setStatus('โหลด OCR ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต');
-        return;
-      }
-
-      isReading = true;
-      ocrBtn.disabled = true;
-      ocrBtn.textContent = 'กำลังอ่านเลข...';
+      sendBtn.disabled = true;
+      loadingBox.style.display = 'block';
+      setStatus('กำลังบีบอัดรูปภาพ...');
 
       try {
-        setStatus('กำลังเตรียมภาพ Crop สำหรับ OCR');
+        const compressed = await compressImageToBase64(selectedFile, 1800, 0.82);
 
-        const croppedCanvas = cropper.getCroppedCanvas({
-          minWidth: 800,
-          minHeight: 180,
-          maxWidth: 2200,
-          maxHeight: 700,
-          imageSmoothingEnabled: true,
-          imageSmoothingQuality: 'high',
-          fillColor: '#ffffff'
-        });
-
-        if (!croppedCanvas) {
-          throw new Error('ไม่สามารถสร้างภาพ Crop ได้');
+        if (!compressed || !compressed.base64) {
+          throw new Error('ไม่สามารถแปลงรูปภาพเป็น base64 ได้');
         }
 
-        const processedCanvas = preprocessForOcr(croppedCanvas);
-        const imageDataUrl = processedCanvas.toDataURL('image/png');
+        returnUrlField.value = returnUrl;
+        mimeTypeField.value = compressed.mimeType;
+        imageBase64Field.value = compressed.base64;
 
-        croppedPreviewImage.src = imageDataUrl;
-        croppedPreview.style.display = 'block';
+        ocrForm.action = returnUrl;
 
-        setStatus('กำลัง OCR เฉพาะส่วนที่ Crop กรุณารอสักครู่');
-        ocrOutput.textContent = 'กำลัง OCR...';
-
-        const result = await Tesseract.recognize(
-          imageDataUrl,
-          'eng',
-          {
-            tessedit_char_whitelist: 'PEA0123456789 .:-/|',
-            logger: function(m) {
-              if (m && m.status) {
-                const progress = typeof m.progress === 'number'
-                  ? Math.round(m.progress * 100)
-                  : '';
-
-                setStatus('OCR: ' + m.status + (progress ? ' ' + progress + '%' : ''));
-              }
-            }
-          }
-        );
-
-        const text = result && result.data && result.data.text
-          ? result.data.text
-          : '';
-
-        const candidates = extractPeaCandidates(text);
-        const best = candidates.length > 0 ? candidates[0] : '';
-
-        ocrOutput.textContent =
-          'ข้อความที่ OCR อ่านได้:\n' +
-          (text.trim() || '-') +
-          '\n\nเลขที่ระบบพบ:\n' +
-          (candidates.length > 0 ? candidates.join('\n') : '-');
-
-        if (best) {
-          detectedPeaNo.value = best;
-          setStatus('พบเลขที่น่าจะเป็น PEA No. กรุณาตรวจสอบก่อนกด “ใช้เลขนี้”');
-        } else {
-          setStatus('ยังไม่พบเลข 10 หลัก กรุณา Crop ใหม่หรือกรอกเอง');
-        }
+        setStatus('กำลังส่งภาพไปยัง Typhoon OCR...');
+        ocrForm.submit();
 
       } catch (error) {
-        ocrOutput.textContent = 'OCR ไม่สำเร็จ';
-        setStatus('OCR ไม่สำเร็จ: ' + getReadableErrorMessage(error));
-      } finally {
-        isReading = false;
-        ocrBtn.disabled = false;
-        ocrBtn.textContent = 'อ่านเลข PEA จากส่วนที่ Crop';
+        sendBtn.disabled = false;
+        loadingBox.style.display = 'none';
+        setStatus('เตรียมภาพไม่สำเร็จ: ' + getReadableErrorMessage(error));
       }
     }
 
-    function preprocessForOcr(sourceCanvas) {
-      const scale = 2;
-      const canvas = document.createElement('canvas');
-      canvas.width = sourceCanvas.width * scale;
-      canvas.height = sourceCanvas.height * scale;
+    function compressImageToBase64(file, maxSide, quality) {
+      return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
 
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        reader.onload = function(event) {
+          const img = new Image();
 
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+          img.onload = function() {
+            try {
+              const originalWidth = img.naturalWidth || img.width;
+              const originalHeight = img.naturalHeight || img.height;
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
+              let targetWidth = originalWidth;
+              let targetHeight = originalHeight;
 
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+              const longestSide = Math.max(originalWidth, originalHeight);
 
-        let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+              if (longestSide > maxSide) {
+                const ratio = maxSide / longestSide;
+                targetWidth = Math.round(originalWidth * ratio);
+                targetHeight = Math.round(originalHeight * ratio);
+              }
 
-        gray = (gray - 128) * 1.55 + 128;
+              workCanvas.width = targetWidth;
+              workCanvas.height = targetHeight;
 
-        if (gray > 255) gray = 255;
-        if (gray < 0) gray = 0;
+              const ctx = workCanvas.getContext('2d', { willReadFrequently: true });
 
-        data[i] = gray;
-        data[i + 1] = gray;
-        data[i + 2] = gray;
-      }
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, targetWidth, targetHeight);
+              ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
-      ctx.putImageData(imageData, 0, 0);
+              const dataUrl = workCanvas.toDataURL('image/jpeg', quality);
+              const base64 = dataUrl.split(',')[1];
 
-      return canvas;
-    }
+              resolve({
+                base64: base64,
+                mimeType: 'image/jpeg',
+                width: targetWidth,
+                height: targetHeight
+              });
 
-    function extractPeaCandidates(text) {
-      const raw = String(text || '')
-        .replace(/[Oo]/g, '0')
-        .replace(/[Il|]/g, '1')
-        .replace(/[Ss]/g, '5')
-        .replace(/[Bb]/g, '8')
-        .replace(/[Zz]/g, '2');
+            } catch (error) {
+              reject(error);
+            }
+          };
 
-      const compact = raw
-        .toUpperCase()
-        .replace(/\s+/g, ' ');
+          img.onerror = function() {
+            reject(new Error('โหลดรูปภาพไม่สำเร็จ'));
+          };
 
-      const candidates = [];
+          img.src = event.target.result;
+        };
 
-      const peaPattern = /P\s*E\s*A[\s.:/-]*([0-9][0-9\s.:/-]{8,24}[0-9])/gi;
-      let match;
+        reader.onerror = function() {
+          reject(new Error('อ่านไฟล์รูปภาพไม่สำเร็จ'));
+        };
 
-      while ((match = peaPattern.exec(compact)) !== null) {
-        const digits = String(match[1] || '').replace(/[^\d]/g, '');
-        addCandidatesFromDigits(candidates, digits);
-      }
-
-      const digitGroups = compact.match(/[0-9][0-9\s.:/-]{8,24}[0-9]/g) || [];
-
-      digitGroups.forEach(function(group) {
-        const digits = String(group || '').replace(/[^\d]/g, '');
-        addCandidatesFromDigits(candidates, digits);
+        reader.readAsDataURL(file);
       });
-
-      const allDigits = compact.replace(/[^\d]/g, '');
-      addCandidatesFromDigits(candidates, allDigits);
-
-      return uniqueCandidates(candidates);
     }
 
-    function addCandidatesFromDigits(candidates, digits) {
-      const cleaned = String(digits || '').replace(/[^\d]/g, '');
-
-      if (cleaned.length < 10) {
-        return;
-      }
-
-      if (cleaned.length === 10) {
-        candidates.push(cleaned);
-        return;
-      }
-
-      for (let i = 0; i <= cleaned.length - 10; i++) {
-        candidates.push(cleaned.slice(i, i + 10));
-      }
-    }
-
-    function uniqueCandidates(values) {
-      const seen = {};
-      const output = [];
-
-      values.forEach(function(value) {
-        const cleaned = String(value || '').replace(/[^\d]/g, '');
-
-        if (cleaned.length !== 10) {
-          return;
-        }
-
-        if (!seen[cleaned]) {
-          seen[cleaned] = true;
-          output.push(cleaned);
-        }
-      });
-
-      return output;
-    }
-
-    function submitDetectedCode() {
-      const code = String(detectedPeaNo.value || '').replace(/[^\d]/g, '');
+    function submitManualCode() {
+      const code = String(manualCode.value || '').replace(/[^\d]/g, '');
 
       if (!code) {
-        setStatus('กรุณากรอกหรือ OCR เลข PEA No. ก่อน');
+        setStatus('กรุณากรอก PEA No. ก่อน');
         return;
-      }
-
-      if (code.length !== 10) {
-        const ok = confirm('เลขที่กรอกมี ' + code.length + ' หลัก ไม่ใช่ 10 หลัก ต้องการใช้เลขนี้ต่อหรือไม่?');
-
-        if (!ok) {
-          return;
-        }
       }
 
       redirectBackWithCode(code);
@@ -737,46 +511,6 @@
         window.location.href = returnUrl;
       } else {
         history.back();
-      }
-    }
-
-    function clearAndRetake() {
-      detectedPeaNo.value = '';
-      ocrOutput.textContent = 'ผล OCR จะแสดงที่นี่';
-      croppedPreview.style.display = 'none';
-      photoInput.value = '';
-      setStatus('กรุณาถ่ายภาพหรือเลือกรูปใหม่');
-      photoInput.click();
-    }
-
-    function rotateLeft() {
-      if (cropper) {
-        cropper.rotate(-90);
-      }
-    }
-
-    function rotateRight() {
-      if (cropper) {
-        cropper.rotate(90);
-      }
-    }
-
-    function zoomIn() {
-      if (cropper) {
-        cropper.zoom(0.1);
-      }
-    }
-
-    function zoomOut() {
-      if (cropper) {
-        cropper.zoom(-0.1);
-      }
-    }
-
-    function destroyCropper() {
-      if (cropper) {
-        cropper.destroy();
-        cropper = null;
       }
     }
 
