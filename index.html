@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>PEA Barcode Scanner</title>
+
+  <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111827;
+      color: #ffffff;
+    }
+
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: #1f2937;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      margin-top: 24px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 0 0 8px;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #d1d5db;
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+
+    .video-box {
+      background: #000000;
+      border-radius: 16px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      max-height: 420px;
+      border-radius: 12px;
+      background: #000000;
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 24px;
+      text-align: center;
+      color: #e5e7eb;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .start-btn {
+      background: #16a34a;
+    }
+
+    .stop-btn {
+      background: #dc2626;
+    }
+
+    .back-btn {
+      background: #4b5563;
+    }
+
+    .manual-box {
+      margin-top: 16px;
+      border-top: 1px solid #374151;
+      padding-top: 16px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      font-size: 18px;
+      border-radius: 12px;
+      border: 1px solid #4b5563;
+      outline: none;
+    }
+
+    .hint {
+      margin-top: 14px;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>PEA Barcode Scanner</h1>
+      <div class="subtitle">สแกน Barcode แล้วระบบจะกลับไปตรวจสอบอัตโนมัติ</div>
+
+      <div class="video-box">
+        <video id="barcodeVideo" playsinline muted></video>
+      </div>
+
+      <div id="status" class="status">กำลังเตรียมระบบสแกน...</div>
+
+      <button class="start-btn" onclick="startScanner()">เริ่มสแกน</button>
+      <button class="stop-btn" onclick="stopScanner()">หยุดกล้อง</button>
+      <button class="back-btn" onclick="goBackWithoutCode()">กลับโดยไม่สแกน</button>
+
+      <div class="manual-box">
+        <input id="manualCode" type="text" inputmode="numeric" placeholder="กรอก PEA No. เอง หากสแกนไม่ได้">
+        <button class="start-btn" onclick="submitManualCode()">ใช้รหัสนี้</button>
+      </div>
+
+      <div class="hint">
+        หากกล้องไม่เปิด ให้ตรวจสอบว่าเปิดผ่าน HTTPS และอนุญาตการใช้กล้องแล้ว
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('barcodeVideo');
+    const statusBox = document.getElementById('status');
+    const manualCode = document.getElementById('manualCode');
+
+    const params = new URLSearchParams(window.location.search);
+    const returnUrl = params.get('returnUrl') || '';
+
+    let codeReader = null;
+    let scanCompleted = false;
+
+    window.addEventListener('load', function() {
+      if (!returnUrl) {
+        setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App');
+        return;
+      }
+
+      startScanner();
+    });
+
+    window.addEventListener('beforeunload', function() {
+      stopScanner();
+    });
+
+    function startScanner() {
+      if (!returnUrl) {
+        setStatus('ไม่พบ returnUrl กรุณาเปิดจากปุ่มสแกนใน Web App');
+        return;
+      }
+
+      if (!window.ZXing) {
+        setStatus('โหลดระบบสแกนไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต');
+        return;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการเปิดกล้อง');
+        return;
+      }
+
+      stopScanner();
+
+      scanCompleted = false;
+      setStatus('กำลังเปิดกล้อง กรุณาอนุญาตการใช้กล้อง');
+
+      try {
+        codeReader = createBarcodeReader_();
+
+        codeReader
+          .listVideoInputDevices()
+          .then(function(videoInputDevices) {
+            if (!videoInputDevices || videoInputDevices.length === 0) {
+              throw new Error('ไม่พบกล้องในอุปกรณ์นี้');
+            }
+
+            const selectedDeviceId = selectBackCamera_(videoInputDevices);
+
+            setStatus('นำ Barcode ให้อยู่ในกรอบกล้อง');
+
+            return codeReader.decodeFromVideoDevice(
+              selectedDeviceId,
+              'barcodeVideo',
+              function(result, err) {
+                if (scanCompleted) {
+                  return;
+                }
+
+                if (result) {
+                  scanCompleted = true;
+
+                  const scannedText = String(result.getText() || '').trim();
+
+                  if (scannedText) {
+                    setStatus('สแกนสำเร็จ: ' + scannedText);
+                    stopScanner();
+                    redirectBackWithCode(scannedText);
+                  }
+                }
+              }
+            );
+          })
+          .catch(function(error) {
+            setStatus('เปิดกล้องหรือสแกนไม่สำเร็จ: ' + getReadableErrorMessage_(error));
+            stopScanner();
+          });
+
+      } catch (error) {
+        setStatus('เปิดกล้องหรือสแกนไม่สำเร็จ: ' + getReadableErrorMessage_(error));
+        stopScanner();
+      }
+    }
+
+    function stopScanner() {
+      try {
+        if (codeReader) {
+          codeReader.reset();
+          codeReader = null;
+        }
+      } catch (e) {}
+    }
+
+    function submitManualCode() {
+      const code = manualCode.value.trim();
+
+      if (!code) {
+        setStatus('กรุณากรอกรหัสก่อน');
+        return;
+      }
+
+      redirectBackWithCode(code);
+    }
+
+    function redirectBackWithCode(code) {
+      const target = new URL(returnUrl);
+      target.searchParams.set('peaNo', code);
+
+      window.location.href = target.toString();
+    }
+
+    function goBackWithoutCode() {
+      if (returnUrl) {
+        window.location.href = returnUrl;
+      } else {
+        history.back();
+      }
+    }
+
+    function createBarcodeReader_() {
+      try {
+        const hints = new Map();
+
+        if (ZXing.DecodeHintType && ZXing.BarcodeFormat) {
+          hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXing.BarcodeFormat.CODE_128,
+            ZXing.BarcodeFormat.CODE_39,
+            ZXing.BarcodeFormat.CODE_93,
+            ZXing.BarcodeFormat.EAN_13,
+            ZXing.BarcodeFormat.EAN_8,
+            ZXing.BarcodeFormat.ITF,
+            ZXing.BarcodeFormat.QR_CODE
+          ]);
+
+          return new ZXing.BrowserMultiFormatReader(hints);
+        }
+      } catch (e) {}
+
+      return new ZXing.BrowserMultiFormatReader();
+    }
+
+    function selectBackCamera_(videoInputDevices) {
+      const backCamera = videoInputDevices.find(function(device) {
+        const label = String(device.label || '').toLowerCase();
+
+        return (
+          label.includes('back') ||
+          label.includes('rear') ||
+          label.includes('environment') ||
+          label.includes('หลัง')
+        );
+      });
+
+      if (backCamera) {
+        return backCamera.deviceId;
+      }
+
+      return videoInputDevices[videoInputDevices.length - 1].deviceId;
+    }
+
+    function getReadableErrorMessage_(error) {
+      const message = String(error && (error.message || error.name) ? (error.message || error.name) : error || '');
+
+      if (message.includes('NotAllowedError') || message.includes('Permission')) {
+        return 'ผู้ใช้ไม่อนุญาตให้ใช้กล้อง';
+      }
+
+      if (message.includes('NotFoundError')) {
+        return 'ไม่พบกล้อง';
+      }
+
+      if (message.includes('NotReadableError')) {
+        return 'กล้องถูกใช้งานโดยแอปอื่น';
+      }
+
+      return message || 'ไม่ทราบสาเหตุ';
+    }
+
+    function setStatus(message) {
+      statusBox.textContent = message;
+    }
+  </script>
+</body>
+</html>
